@@ -24,7 +24,7 @@ namespace Application.Services
         private readonly JwtOptions _jwtSettings;
         private long CurrentUserAccountId => long.Parse(
             _claimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        private string CurrentUserName => _claimsPrincipal.FindFirstValue(ClaimTypes.Name)!;
+        private string CurrentUsername => _claimsPrincipal.FindFirstValue(ClaimTypes.Name)!;
 
         public AccountService(
             ApplicationDbContext context, 
@@ -43,7 +43,7 @@ namespace Application.Services
             Account? currentUserAccount = await FindAccountByIdAsync(CurrentUserAccountId);
             if (currentUserAccount == null)
             {
-                throw new UnauthorizedException();
+                throw new UnauthorizedException("not.authorized");
             }
             return _mapper.Map<AccountDto>(currentUserAccount);
         }
@@ -52,9 +52,9 @@ namespace Application.Services
         {
             Account? account = await GetAccountByUsernameAsync(dto.Username);
             if (account == null
-                || EncryptPassword(dto.Password) == account.PasswordHash)
+                || !BC.EnhancedVerify(dto.Password, account.PasswordHash, HashType.SHA512))
             {
-                throw new UnauthorizedException();
+                throw new UnauthorizedException("wrong.username.or.password");
             }
             return new JwtDto
             {
@@ -66,7 +66,7 @@ namespace Application.Services
         {
             if (await IsUsernameUniqueAsync(dto.Username))
             {
-                throw new ConflictException();
+                throw new ConflictException("username.already.exists");
             }
             Account newAccount = _mapper.Map<Account>(dto);
             newAccount.PasswordHash = EncryptPassword(dto.Password);
@@ -78,15 +78,15 @@ namespace Application.Services
 
         public async Task<AccountDto> UpdateCurrentUserAsync(AccountUpdateDto dto)
         {
-            if (CurrentUserName != dto.Username
+            if (CurrentUsername != dto.Username
                 && await IsUsernameUniqueAsync(dto.Username))
             {
-                throw new ConflictException();
+                throw new ConflictException("username.already.exists");
             }
             Account? currentUserAccount = await FindAccountByIdAsync(CurrentUserAccountId);
             if (currentUserAccount == null)
             {
-                throw new UnauthorizedException();
+                throw new UnauthorizedException("not.authorized");
             }
             _mapper.Map(dto, currentUserAccount);
             currentUserAccount.PasswordHash = EncryptPassword(dto.Password);
@@ -106,7 +106,7 @@ namespace Application.Services
                     new Claim(ClaimTypes.Role, Enum.GetName((AccountRoleEnum)account.AccountRoleId)!)
                 },
                 notBefore: DateTime.UtcNow,
-                expires: DateTime.UtcNow.Add(TimeSpan.FromMinutes(30)),
+                expires: DateTime.UtcNow.Add(TimeSpan.FromSeconds(_jwtSettings.SecondsLifeTime)),
                 signingCredentials: new SigningCredentials(
                     _jwtSettings.SecurityKey, SecurityAlgorithms.HmacSha256)));
         }

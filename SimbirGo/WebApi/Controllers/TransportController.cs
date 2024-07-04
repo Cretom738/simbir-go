@@ -20,6 +20,7 @@ namespace WebApi.Controllers
             _transportService = transportService;
         }
 
+        [AllowAnonymous]
         [HttpGet("{transportId:long}")]
         public async Task<ActionResult<TransportDto>> GetByIdAsync(
             [Range(1, long.MaxValue)] long transportId)

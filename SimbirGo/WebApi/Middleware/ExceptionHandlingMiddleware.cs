@@ -31,7 +31,7 @@ namespace WebApp.Middleware
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync(JsonSerializer.Serialize(new ErrorDto
                 {
-                    Error = exception.Message
+                    ErrorMessage = exception.Message
                 }));
             }
         }

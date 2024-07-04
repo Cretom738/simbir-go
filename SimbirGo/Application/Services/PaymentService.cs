@@ -33,12 +33,12 @@ namespace Application.Services
             if (!IsInRole(AccountRoleEnum.Admin)
                 && CurrentUserAccountId != accountId)
             {
-                throw new ForbiddenException();
+                throw new ForbiddenException("cannot.add.money.to.another.account");
             }
             Account? account = await FindAccountByIdAsync(accountId);
             if (account == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("account.not.found.by.id");
             }
             account.Balance += HesoyamMoneyValue;
             await _context.SaveChangesAsync();

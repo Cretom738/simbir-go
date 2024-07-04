@@ -39,7 +39,7 @@ namespace Application.Services
             Transport? transport = await FindTransportByIdAsync(transportId);
             if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
             }
             return _mapper.Map<TransportAdminDto>(transport);
         }
@@ -50,11 +50,11 @@ namespace Application.Services
                 && dto.MinutePrice == null
                 && dto.DayPrice == null)
             {
-                throw new BadRequestException();
+                throw new BadRequestException("cannot.be.rentable.without.price");
             }
             if (!await DoesAccountExistAsync(dto.OwnerId))
             {
-                throw new NotFoundException();
+                throw new NotFoundException("account.not.found.by.id");
             }
             Transport newTransport = _mapper.Map<Transport>(dto);
             await _context.Transports.AddAsync(newTransport);
@@ -68,13 +68,16 @@ namespace Application.Services
                 && dto.MinutePrice == null
                 && dto.DayPrice == null)
             {
-                throw new BadRequestException();
+                throw new BadRequestException("cannot.be.rentable.without.price");
             }
             Transport? transport = await FindTransportByIdAsync(transportId);
-            if (transport == null
-                || !await DoesAccountExistAsync(dto.OwnerId))
+            if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
+            }
+            if (!await DoesAccountExistAsync(dto.OwnerId))
+            {
+                throw new NotFoundException("account.not.found.by.id");
             }
             _mapper.Map(dto, transport);
             await _context.SaveChangesAsync();
@@ -86,11 +89,11 @@ namespace Application.Services
             Transport? transport = await FindTransportByIdAsync(transportId);
             if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
             }
             if (await IsTransportAssociatedWithUnfinishedRentAsync(transportId))
             {
-                throw new ConflictException();
+                throw new ConflictException("cannot.delete.transport.with.unfinished.rents");
             }
             _context.Transports.Remove(transport);
             await _context.SaveChangesAsync();

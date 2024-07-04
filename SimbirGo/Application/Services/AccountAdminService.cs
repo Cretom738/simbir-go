@@ -42,7 +42,7 @@ namespace Application.Services
             Account? account = await FindAccountByIdAsync(accountId);
             if (account == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("account.not.found.by.id");
             }
             return _mapper.Map<AccountAdminDto>(account);
         }
@@ -51,7 +51,7 @@ namespace Application.Services
         {
             if (await IsUsernameUniqueAsync(dto.Username))
             {
-                throw new ConflictException();
+                throw new ConflictException("username.already.exists");
             }
             Account newAccount = _mapper.Map<Account>(dto);
             newAccount.PasswordHash = EncryptPassword(dto.Password);
@@ -65,12 +65,12 @@ namespace Application.Services
             Account? account = await FindAccountByIdAsync(accountId);
             if (account == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("account.not.found.by.id");
             }
             if (account.Username != dto.Username
                 && await IsUsernameUniqueAsync(dto.Username))
             {
-                throw new ConflictException();
+                throw new ConflictException("username.already.exists");
             }
             _mapper.Map(dto, account);
             account.PasswordHash = EncryptPassword(dto.Password);
@@ -82,16 +82,16 @@ namespace Application.Services
         {
             if (CurrentUserAccountId == accountId)
             {
-                throw new ConflictException();
+                throw new ConflictException("cannot.delete.current.account");
             }
             Account? account = await FindAccountByIdAsync(accountId);
             if (account == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("account.not.found.by.id");
             }
             if (await IsAccountAssociatedWithUnfinishedRentAsync(accountId))
             {
-                throw new ConflictException();
+                throw new ConflictException("cannot.delete.account.with.unfinished.rents");
             }
             _context.Accounts.Remove(account);
             await _context.SaveChangesAsync();

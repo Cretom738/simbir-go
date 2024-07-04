@@ -27,7 +27,7 @@ namespace Application.Services
             Rent? rent = await FindRentByIdAsync(rentId);
             if (rent == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("rent.not.found.by.id");
             }
             return _mapper.Map<RentAdminDto>(rent);
         }
@@ -36,7 +36,7 @@ namespace Application.Services
         {
             if (!await DoesAccountExistAsync(accountId))
             {
-                throw new NotFoundException();
+                throw new NotFoundException("account.not.found.by.id");
             }
             return _mapper.Map<IEnumerable<RentAdminDto>>(await _context.Rents
                 .Where(r => r.RenterId == accountId)
@@ -48,7 +48,7 @@ namespace Application.Services
         {
             if (!await DoesTransportExistAsync(transportId))
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
             }
             return _mapper.Map<IEnumerable<RentAdminDto>>(await _context.Rents
                 .Where(r => r.TransportId == transportId)
@@ -60,20 +60,24 @@ namespace Application.Services
             if (dto.TimeEnd != null
                 && dto.TimeStart > dto.TimeEnd)
             {
-                throw new BadRequestException();
+                throw new BadRequestException("start.time.more.than.end.time");
             }
             if (!await DoesAccountExistAsync(dto.RenterId))
             {
-                throw new NotFoundException();
+                throw new NotFoundException("account.not.found.by.id");
             }
             Transport? transport = await FindTransportByIdAsync(dto.TransportId);
             if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
+            }
+            if (transport.Rents.Any(r => r.TimeEnd != null))
+            {
+                throw new ConflictException("cannot.rent.rented.transport");
             }
             if (transport.OwnerId == dto.RenterId)
             {
-                throw new ConflictException();
+                throw new ConflictException("owner.cannot.rent.his.own.transport");
             }
             Rent newRent = _mapper.Map<Rent>(dto);
             await _context.Rents.AddAsync(newRent);
@@ -86,7 +90,7 @@ namespace Application.Services
             Rent? rent = await FindRentByIdAsync(rentId);
             if (rent == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("rent.not.found.by.id");
             }
             rent.TimeEnd ??= DateTime.UtcNow;
             rent.FinalPrice ??= (RentTypeEnum)rent.RentTypeId switch
@@ -108,22 +112,25 @@ namespace Application.Services
             if (dto.TimeEnd != null
                 && dto.TimeStart > dto.TimeEnd)
             {
-                throw new BadRequestException();
+                throw new BadRequestException("start.time.more.than.end.time");
             }
             Rent? rent = await FindRentByIdAsync(rentId);
-            if (rent == null
-                || !await DoesAccountExistAsync(dto.RenterId))
+            if (rent == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("rent.not.found.by.id");
+            }
+            if (!await DoesAccountExistAsync(dto.RenterId))
+            {
+                throw new NotFoundException("account.not.found.by.id");
             }
             Transport? transport = await FindTransportByIdAsync(dto.TransportId);
             if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
             }
             if (transport.OwnerId == dto.RenterId)
             {
-                throw new ConflictException();
+                throw new ConflictException("owner.cannot.rent.his.own.transport");
             }
             _mapper.Map(dto, rent);
             await _context.SaveChangesAsync();
@@ -135,7 +142,7 @@ namespace Application.Services
             Rent? rent = await FindRentByIdAsync(rentId);
             if (rent == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("rent.not.found.by.id");
             }
             _context.Rents.Remove(rent);
             await _context.SaveChangesAsync();
@@ -152,6 +159,7 @@ namespace Application.Services
         private Task<Transport?> FindTransportByIdAsync(long transportId)
         {
             return _context.Transports
+                .Include(t => t.Rents)
                 .FirstOrDefaultAsync(t => t.Id == transportId);
         }
 

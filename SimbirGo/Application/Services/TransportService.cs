@@ -31,7 +31,7 @@ namespace Application.Services
             Transport? transport = await FindTransportByIdAsync(transportId);
             if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
             }
             return _mapper.Map<TransportDto>(transport);
         }
@@ -42,11 +42,11 @@ namespace Application.Services
                 && dto.MinutePrice == null
                 && dto.DayPrice == null)
             {
-                throw new BadRequestException();
+                throw new BadRequestException("cannot.be.rentable.without.price");
             }
             if (!await DoesAccountExistAsync(CurrentUserAccountId))
             {
-                throw new UnauthorizedException();
+                throw new UnauthorizedException("not.authorized");
             }
             Transport newTransport = _mapper.Map<Transport>(dto);
             newTransport.OwnerId = CurrentUserAccountId;
@@ -61,16 +61,16 @@ namespace Application.Services
                 && dto.MinutePrice == null
                 && dto.DayPrice == null)
             {
-                throw new BadRequestException();
+                throw new BadRequestException("cannot.be.rentable.without.price");
             }
             Transport? transport = await FindTransportByIdAsync(transportId);
             if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
             }
             if (transport.OwnerId != CurrentUserAccountId)
             {
-                throw new ForbiddenException();
+                throw new ForbiddenException("cannot.update.not.own.transport");
             }
             _mapper.Map(dto, transport);
             await _context.SaveChangesAsync();
@@ -82,15 +82,15 @@ namespace Application.Services
             Transport? transport = await FindTransportByIdAsync(transportId);
             if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
             }
             if (transport.OwnerId != CurrentUserAccountId)
             {
-                throw new ForbiddenException();
+                throw new ForbiddenException("cannot.delete.not.own.transport");
             }
             if (await IsTransportAssociatedWithUnfinishedRentAsync(transportId))
             {
-                throw new ConflictException();
+                throw new ConflictException("cannot.delete.transport.with.unfinished.rents");
             }
             _context.Transports.Remove(transport);
             await _context.SaveChangesAsync();

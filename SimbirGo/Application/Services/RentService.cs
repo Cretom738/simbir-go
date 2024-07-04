@@ -47,12 +47,12 @@ namespace Application.Services
             Rent? rent = await FindRentByIdAsync(rentId);
             if (rent == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("rent.not.found.by.id");
             }
             if (rent.RenterId != CurrentUserAccountId
                 && rent.Transport.OwnerId != CurrentUserAccountId)
             {
-                throw new ForbiddenException();
+                throw new ForbiddenException("cannot.get.rent.when.not.owner.and.not.renter");
             }
             return _mapper.Map<RentDto>(rent);
         }
@@ -69,11 +69,11 @@ namespace Application.Services
             Transport? transport = await FindTransportByIdAsync(transportId);
             if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
             }
             if (transport.OwnerId != CurrentUserAccountId)
             {
-                throw new ForbiddenException();
+                throw new ForbiddenException("cannot.get.transport.history.when.not.owner");
             }
             return _mapper.Map<IEnumerable<RentDto>>(await _context.Rents
                 .Where(r => r.TransportId == transportId)
@@ -85,11 +85,11 @@ namespace Application.Services
             Transport? transport = await FindTransportByIdAsync(transportId);
             if (transport == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("transport.not.found.by.id");
             }
             if (transport.OwnerId == CurrentUserAccountId)
             {
-                throw new ConflictException();
+                throw new ConflictException("cannot.rent.own.transport");
             }
             Rent newRent = new Rent
             {
@@ -101,19 +101,19 @@ namespace Application.Services
             newRent.PriceOfUnit = dto.RentType switch
             {
                 RentTypeEnum.Minutes => transport.MinutePrice 
-                    ?? throw new ConflictException(),
+                    ?? throw new ConflictException("cannot.rent.per.minute.when.no.minute.price"),
                 RentTypeEnum.Days => transport.DayPrice 
-                    ?? throw new ConflictException(),
+                    ?? throw new ConflictException("cannot.rent.per.day.when.no.day.price"),
                 _ => throw new BadRequestException()
             };
             Account? renter = await FindAccountByIdAsync(CurrentUserAccountId);
             if (renter == null)
             {
-                throw new UnauthorizedException();
+                throw new UnauthorizedException("not.authorized");
             }
             if (newRent.PriceOfUnit > renter.Balance)
             {
-                throw new ConflictException();
+                throw new ConflictException("cannot.rent.when.not.enough.balance");
             }
             await _context.Rents.AddAsync(newRent);
             await _context.SaveChangesAsync();
@@ -125,12 +125,15 @@ namespace Application.Services
             Rent? rent = await FindRentByIdAsync(rentId);
             if (rent == null)
             {
-                throw new NotFoundException();
+                throw new NotFoundException("rent.not.found.by.id");
             }
-            if (rent.RenterId != CurrentUserAccountId
-                || rent.TimeEnd != null)
+            if (rent.RenterId != CurrentUserAccountId)
             {
-                throw new ConflictException();
+                throw new ConflictException("cannot.end.rent.when.not.renter");
+            }
+            if (rent.TimeEnd != null)
+            {
+                throw new ConflictException("rent.already.ended");
             }
             rent.TimeEnd = DateTime.UtcNow;
             double finalPrice = (RentTypeEnum)rent.RentTypeId switch
